@@ -9,9 +9,8 @@ This demo provides an interactive web interface to test both API endpoints:
 import gradio as gr
 import httpx
 import asyncio
-from typing import Tuple, Dict, Any
+from typing import Tuple
 import json
-import pandas as pd
 
 # API configuration
 API_BASE_URL = "http://localhost:8000"
@@ -157,7 +156,7 @@ async def get_wallet_report(wallet_address: str) -> Tuple[str, str]:
             else:
                 try:
                     error_detail = response.json().get('detail', 'Unknown error')
-                except:
+                except Exception:
                     error_detail = response.text
                 return f"❌ API Error: {error_detail}", ""
     

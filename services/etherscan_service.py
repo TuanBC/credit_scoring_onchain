@@ -2,8 +2,6 @@
 Etherscan API service for fetching wallet transaction data.
 """
 
-import asyncio
-import time
 from typing import List, Dict, Any
 import aiohttp
 from bs4 import BeautifulSoup

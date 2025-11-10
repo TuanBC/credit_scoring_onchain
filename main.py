@@ -6,7 +6,7 @@ by fetching transaction history from Etherscan and extracting features.
 """
 
 from fastapi import FastAPI, HTTPException, Path
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
 import os

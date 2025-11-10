@@ -60,7 +60,8 @@ class CreditScoringService:
         features['total_transactions'] = len(df)
         features['avg_tx_per_month'] = len(df) / max(1, ((df['timeStamp'].max() - df['timeStamp'].min()).days / 30))
         
-        wei_to_eth = lambda x: x / 1e18 if x is not None else 0
+        def wei_to_eth(x):
+            return x / 1e18 if x is not None else 0
         
         # ETH flow features
         features['total_eth_sent'] = wei_to_eth(df[df['from'] == wallet_address]['value'].sum())
