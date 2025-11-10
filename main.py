@@ -21,6 +21,8 @@ from services.etherscan_service import EtherscanService
 from services.credit_scoring_service import CreditScoringService
 from services.offchain_data_generator import OffchainDataGenerator
 import numpy as np
+
+
 def convert_numpy(obj):
     """Recursively convert numpy types to native Python types."""
     if isinstance(obj, dict):
@@ -36,20 +38,20 @@ def convert_numpy(obj):
     else:
         return obj
 
+
 # Load environment variables
 load_dotenv()
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Ethereum Wallet Credit Scoring API",
     description="API for calculating credit scores for Ethereum wallets based on transaction history",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 # Initialize services
@@ -73,13 +75,18 @@ offchain_generator = OffchainDataGenerator()
 llm_provider = os.getenv("LLM_PROVIDER", "openrouter").lower()
 llm = None
 if llm_provider == "bedrock":
-    bedrock_model_id = os.getenv("BEDROCK_MODEL_ID", "anthropic.claude-3-5-sonnet-20240620-v1:0")
-    bedrock_region = os.getenv("BEDROCK_REGION", "us-west-2")
-    # AWS credentials are read from env vars or IAM role
+    bedrock_model_id = os.getenv(
+        "BEDROCK_MODEL_ID", "anthropic.claude-3-5-sonnet-20240620-v1:0"
+    )
+    bedrock_region = os.getenv("BEDROCK_REGION", "ap-southeast-2")
+    aws_bearer_token = os.getenv("AWS_BEARER_TOKEN_BEDROCK")
+    if not aws_bearer_token:
+        logger.warning(
+            "AWS_BEARER_TOKEN_BEDROCK environment variable is not set. Bedrock authentication may fail."
+        )
     llm = ChatBedrockConverse(
         model_id=bedrock_model_id,
         region_name=bedrock_region,
-        aws_session_token=os.getenv("AWS_SESSION_TOKEN"),  # Optional
         temperature=0.7,
         max_tokens=2000,
     )
@@ -98,17 +105,19 @@ else:
 prompts_dir = os.path.join(os.path.dirname(__file__), "prompts")
 jinja_env = Environment(loader=FileSystemLoader(prompts_dir))
 
+
 def load_prompty_template(template_name: str) -> str:
     """Load and parse a .prompty file, extracting the template content"""
     template_path = os.path.join(prompts_dir, template_name)
-    with open(template_path, 'r') as f:
+    with open(template_path, "r") as f:
         content = f.read()
     # Split on --- to separate metadata from template
-    parts = content.split('---\n', 2)
+    parts = content.split("---\n", 2)
     if len(parts) >= 3:
         # Return the template part (after the second ---)
         return parts[2].strip()
     return content.strip()
+
 
 def render_prompty_template(template_name: str, data: Dict[str, Any]) -> str:
     """Load a .prompty template and render it with the given data"""
@@ -119,6 +128,7 @@ def render_prompty_template(template_name: str, data: Dict[str, Any]) -> str:
 
 class CreditScoreResponse(BaseModel):
     """Response model for credit score enquiry"""
+
     wallet_address: str
     credit_score: float
     features: Dict[str, Any]
@@ -133,54 +143,58 @@ async def root():
         "version": "1.0.0",
         "endpoints": {
             "enquiry": "/v1/wallet/{wallet_address}/enquiry",
-            "report": "/v1/wallet/{wallet_address}/report"
-        }
+            "report": "/v1/wallet/{wallet_address}/report",
+        },
     }
 
 
 @app.get("/v1/wallet/{wallet_address}/enquiry", response_model=CreditScoreResponse)
 async def enquire_wallet_credit_score(
-    wallet_address: str = Path(..., description="Ethereum wallet address", min_length=42, max_length=42)
+    wallet_address: str = Path(
+        ..., description="Ethereum wallet address", min_length=42, max_length=42
+    ),
 ) -> CreditScoreResponse:
     """
     Get credit score for an Ethereum wallet.
-    
+
     This endpoint:
     1. Fetches transaction history from Etherscan API
     2. Extracts credit features from the transaction data
     3. Optionally fetches additional card info from Etherscan
     4. Calculates and returns the final credit score
-    
+
     Args:
         wallet_address: Ethereum wallet address (42 characters including 0x prefix)
-    
+
     Returns:
         CreditScoreResponse containing the credit score and extracted features
     """
     try:
         # Validate wallet address format
         if not wallet_address.startswith("0x"):
-            raise HTTPException(status_code=400, detail="Wallet address must start with '0x'")
-        
+            raise HTTPException(
+                status_code=400, detail="Wallet address must start with '0x'"
+            )
+
         wallet_address = wallet_address.lower()
-        
+
         # Step 1: Fetch transaction history from Etherscan
         transactions = await etherscan_service.fetch_transactions(wallet_address)
-        
+
         if not transactions:
             return CreditScoreResponse(
                 wallet_address=wallet_address,
                 credit_score=0.0,
                 features={},
-                message="No transaction history found for this wallet"
+                message="No transaction history found for this wallet",
             )
-        
+
         # Step 2: Extract credit features from transactions
         features = credit_scoring_service.extract_features(transactions, wallet_address)
-        
+
         # Step 3: Calculate credit score using scorecard
         credit_score = credit_scoring_service.calculate_scorecard_credit_score(features)
-        
+
         # Convert numpy types in features
         features = convert_numpy(features)
         credit_score = float(credit_score)  # Ensure float
@@ -190,7 +204,7 @@ async def enquire_wallet_credit_score(
         logger.info(f"Generated off-chain data for wallet: {wallet_address}")
         for key, value in offchain_data.items():
             logger.info(f"  {key}: {value}")
-        
+
         # Combine on-chain and off-chain features
         complete_features = {**features, **offchain_data}
 
@@ -198,67 +212,70 @@ async def enquire_wallet_credit_score(
             wallet_address=wallet_address,
             credit_score=credit_score,
             features=complete_features,
-            message="Credit score calculated successfully"
+            message="Credit score calculated successfully",
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Error processing wallet credit score: {str(e)}"
+            status_code=500, detail=f"Error processing wallet credit score: {str(e)}"
         )
 
 
 @app.get("/v1/wallet/{wallet_address}/report", response_class=PlainTextResponse)
 async def generate_wallet_report(
-    wallet_address: str = Path(..., description="Ethereum wallet address", min_length=42, max_length=42)
+    wallet_address: str = Path(
+        ..., description="Ethereum wallet address", min_length=42, max_length=42
+    ),
 ) -> str:
     """
     Generate an LLM-powered markdown report for an Ethereum wallet.
-    
+
     This endpoint performs the same analysis as /enquiry but returns a comprehensive
     markdown report generated by an LLM via OpenRouter.
-    
+
     Args:
         wallet_address: Ethereum wallet address (42 characters including 0x prefix)
-    
+
     Returns:
         Markdown-formatted report analyzing the wallet's credit profile
     """
     try:
         # Validate wallet address format
         if not wallet_address.startswith("0x"):
-            raise HTTPException(status_code=400, detail="Wallet address must start with '0x'")
-        
+            raise HTTPException(
+                status_code=400, detail="Wallet address must start with '0x'"
+            )
+
         wallet_address = wallet_address.lower()
-        
+
         # Step 1: Fetch transaction history from Etherscan
         transactions = await etherscan_service.fetch_transactions(wallet_address)
-        
+
         if not transactions:
             return f"# Wallet Credit Report\n\n**Wallet Address:** `{wallet_address}`\n\n## Summary\n\nNo transaction history found for this wallet. Unable to generate credit assessment."
-        
+
         # Step 2: Extract credit features from transactions
         features = credit_scoring_service.extract_features(transactions, wallet_address)
-        
+
         # Step 3: Calculate credit score using scorecard
         credit_score = credit_scoring_service.calculate_scorecard_credit_score(features)
-        
+
         # Convert numpy types
         features = convert_numpy(features)
         credit_score = float(credit_score)
-        
+
         # Step 4: Generate off-chain persona data
         offchain_data = offchain_generator.generate(wallet_address, features)
         logger.info(f"Generated off-chain data for wallet: {wallet_address}")
         for key, value in offchain_data.items():
             logger.info(f"  {key}: {value}")
-        
+
         # Step 5: Prepare data for LLM
         # Combine on-chain and off-chain features
         complete_features = {**features, **offchain_data}
-        
+
         # Prepare a preview of the first 20 features for the template
         features_preview = list(complete_features.items())[:20]
         report_data = {
@@ -267,9 +284,8 @@ async def generate_wallet_report(
             "transaction_count": len(transactions),
             "features": complete_features,
             "features_preview": features_preview,
-            "offchain_data": offchain_data
+            "offchain_data": offchain_data,
         }
-
 
         # Step 6: Render prompt using Prompty template with Jinja2
         prompt = render_prompty_template("wallet_report.prompty", report_data)
@@ -279,13 +295,12 @@ async def generate_wallet_report(
         response = await llm.ainvoke(messages)
         report = response.text
         return report
-        
+
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Error generating wallet report: {str(e)}"
+            status_code=500, detail=f"Error generating wallet report: {str(e)}"
         )
 
 
@@ -297,4 +312,5 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

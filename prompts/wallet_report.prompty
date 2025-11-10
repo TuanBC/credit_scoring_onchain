@@ -68,10 +68,10 @@ Generate a professional markdown report with the following sections:
 ## 3. Profile Overview
 | Attribute | Value | Notes |
 |-----------|-------|-------|
-| Age | [age] | [brief context] |
-| Occupation | [job] | [relevance] |
-| Income Level | [income] | [alignment with activity] |
-| Experience | [years] | [sophistication match] |
+| Age | {{ offchain_data.age }} | Off-chain persona age |
+| Occupation | {{ offchain_data.occupation }} | Off-chain occupation |
+| Income Level | ${{ offchain_data.monthly_income_usd }} | Monthly income (USD) |
+| Experience | {{ offchain_data.years_of_experience }} years | Professional experience |
 
 ## 4. On-Chain Behavior
 - Transaction patterns: [brief finding]
