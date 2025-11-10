@@ -1,4 +1,3 @@
-import pytest
 from services.credit_scoring_service import CreditScoringService
 
 def test_extract_features_empty():
