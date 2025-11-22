@@ -12,7 +12,7 @@ dependencies = [
     "capstone==5.0.6",
     "certifi==2025.8.3",
     "cffi==2.0.0",
-    "cfgv==3.4.0",
+    "cfgv==3.5.0",
     "charset-normalizer==3.4.3",
     "colorama==0.4.6",
     "configparser==7.2.0",
