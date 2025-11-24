@@ -1,0 +1,17 @@
+{
+  "ecr_repository_url": {
+    "sensitive": false,
+    "type": "string",
+    "value": "043229137291.dkr.ecr.ap-southeast-2.amazonaws.com/credit-scoring-onchain"
+  },
+  "ecs_cluster_name": {
+    "sensitive": false,
+    "type": "string",
+    "value": "credit-scoring-cluster"
+  },
+  "task_definition_arn": {
+    "sensitive": false,
+    "type": "string",
+    "value": "arn:aws:ecs:ap-southeast-2:043229137291:task-definition/credit-scoring-task:1"
+  }
+}
