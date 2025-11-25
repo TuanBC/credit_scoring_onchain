@@ -1,437 +1,336 @@
 {% extends "base.html" %}
 
 {% block content %}
-<!-- Breadcrumb -->
-<nav class="breadcrumb">
+<!-- Compact Header Bar -->
+<div class="score-page-header">
   <div class="container">
-    <a href="/" class="breadcrumb-item">
-      <i class="fas fa-home"></i>
-      Home
-    </a>
-    <i class="fas fa-chevron-right breadcrumb-separator"></i>
-    <span class="breadcrumb-item active">Score Details</span>
+    <div class="header-row">
+      <!-- Left: Breadcrumb & Wallet -->
+      <div class="header-left">
+        <nav class="breadcrumb-inline">
+          <a href="/"><i class="fas fa-home"></i></a>
+          <i class="fas fa-chevron-right"></i>
+          <span>Score Analysis</span>
+        </nav>
+        <div class="wallet-compact">
+          <i class="fas fa-wallet"></i>
+          <code class="wallet-addr">{{ wallet_address }}</code>
+          <button class="icon-btn" data-copy="{{ wallet_address }}" title="Copy">
+            <i class="fas fa-copy"></i>
+          </button>
+          <a href="https://etherscan.io/address/{{ wallet_address }}" target="_blank" class="icon-btn" title="Etherscan">
+            <i class="fas fa-external-link-alt"></i>
+          </a>
+        </div>
+      </div>
+      
+      <!-- Right: Actions -->
+      <div class="header-right">
+        {% if report_enabled %}
+        <a href="/api/v1/wallets/{{ wallet_address }}/report" class="btn btn-primary btn-sm">
+          <i class="fas fa-file-alt"></i>
+          <span>Full Report</span>
+        </a>
+        {% endif %}
+        <a href="/" class="btn btn-outline btn-sm">
+          <i class="fas fa-search"></i>
+          <span>New Search</span>
+        </a>
+      </div>
+    </div>
   </div>
-</nav>
+</div>
 
-<!-- Score Header -->
-<section class="score-hero">
+<!-- Main Dashboard Grid -->
+<main class="dashboard-main">
   <div class="container">
-    <div class="score-hero-content">
-      <!-- Left: Wallet Info -->
-      <div class="wallet-info">
-        <div class="wallet-header">
-          <div class="wallet-icon">
-            <i class="fas fa-wallet"></i>
+    <div class="dashboard-grid">
+      
+      <!-- LEFT COLUMN: Score & Key Metrics -->
+      <aside class="dashboard-sidebar">
+        <!-- Score Card -->
+        <div class="score-card-main">
+          <div class="score-ring-container" data-score="{{ score }}">
+            <svg class="score-ring-svg" viewBox="0 0 120 120">
+              <circle class="score-ring-bg" cx="60" cy="60" r="52" />
+              <circle class="score-ring-progress" cx="60" cy="60" r="52" />
+            </svg>
+            <div class="score-center">
+              <span class="score-number">{{ "%.0f"|format(score) }}</span>
+              <span class="score-label">/ 1000</span>
+            </div>
           </div>
-          <div class="wallet-details">
-            <span class="wallet-label">Ethereum Address</span>
-            <div class="wallet-address-row">
-              <code class="wallet-address" id="walletAddress">{{ wallet_address }}</code>
-              <button class="copy-btn" data-copy="{{ wallet_address }}" title="Copy address">
-                <i class="fas fa-copy"></i>
-              </button>
-              <a href="https://etherscan.io/address/{{ wallet_address }}" target="_blank" class="etherscan-link" title="View on Etherscan">
-                <i class="fas fa-external-link-alt"></i>
-              </a>
+          <div class="score-rating-badge">
+            {% if score >= 700 %}
+            <span class="badge badge-excellent"><i class="fas fa-shield-alt"></i> Grade 1 - Ultra Low Risk</span>
+            {% elif score >= 653 %}
+            <span class="badge badge-good"><i class="fas fa-check-circle"></i> Grade 2 - Very Low Risk</span>
+            {% elif score >= 600 %}
+            <span class="badge badge-fair"><i class="fas fa-thumbs-up"></i> Grade 3 - Low Risk</span>
+            {% elif score >= 570 %}
+            <span class="badge badge-moderate"><i class="fas fa-exclamation-circle"></i> Grade 4 - Moderate Risk</span>
+            {% elif score >= 528 %}
+            <span class="badge badge-poor"><i class="fas fa-exclamation-triangle"></i> Grade 5 - High Risk</span>
+            {% else %}
+            <span class="badge badge-critical"><i class="fas fa-times-circle"></i> Grade 6 - Very High Risk</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="metrics-card">
+          <h3 class="card-title-sm"><i class="fas fa-tachometer-alt"></i> Key Metrics</h3>
+          <div class="metric-list">
+            <div class="metric-row">
+              <span class="metric-label"><i class="fas fa-exchange-alt"></i> Total Transactions</span>
+              <span class="metric-value">{{ features.total_transactions or 0 }}</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label"><i class="fas fa-calendar"></i> Account Age</span>
+              <span class="metric-value">{{ features.account_age_days or 0 }} days</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label"><i class="fas fa-users"></i> Counterparties</span>
+              <span class="metric-value">{{ features.unique_counterparties or 0 }}</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label"><i class="fab fa-ethereum"></i> Net ETH</span>
+              <span class="metric-value {% if (features.net_eth_change or 0) >= 0 %}text-success{% else %}text-danger{% endif %}">
+                {{ "%.4f"|format(features.net_eth_change or 0) }}
+              </span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label"><i class="fas fa-file-contract"></i> Contract Interactions</span>
+              <span class="metric-value">{{ features.contract_interactions or 0 }}</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label"><i class="fas fa-clock"></i> Days Since Last Tx</span>
+              <span class="metric-value">{{ features.days_since_last_tx or 0 }}</span>
             </div>
           </div>
         </div>
-        
-        {% if message %}
-        <div class="alert alert-info">
-          <i class="fas fa-info-circle"></i>
-          <span>{{ message }}</span>
-        </div>
-        {% endif %}
-      </div>
 
-      <!-- Right: Score Display -->
-      <div class="score-display">
-        <div class="score-ring" data-score="{{ score }}">
-          <svg viewBox="0 0 200 200">
-            <circle class="score-ring-bg" cx="100" cy="100" r="90" />
-            <circle class="score-ring-progress" cx="100" cy="100" r="90" />
-          </svg>
-          <div class="score-value-wrapper">
-            <span class="score-value">{{ "%.0f"|format(score) }}</span>
-            <span class="score-max">/ 1000</span>
+        <!-- Score Factors -->
+        <div class="factors-card">
+          <h3 class="card-title-sm"><i class="fas fa-balance-scale"></i> Score Factors</h3>
+          <div class="factor-bars">
+            <div class="factor-item">
+              <div class="factor-header">
+                <span>Activity</span>
+                <span>{{ [100, (features.total_transactions or 0) / 10]|min|int }}%</span>
+              </div>
+              <div class="factor-bar">
+                <div class="factor-fill" style="width: {{ [100, (features.total_transactions or 0) / 10]|min }}%"></div>
+              </div>
+            </div>
+            <div class="factor-item">
+              <div class="factor-header">
+                <span>Maturity</span>
+                <span>{{ [100, (features.account_age_days or 0) / 3.65]|min|int }}%</span>
+              </div>
+              <div class="factor-bar">
+                <div class="factor-fill" style="width: {{ [100, (features.account_age_days or 0) / 3.65]|min }}%"></div>
+              </div>
+            </div>
+            <div class="factor-item">
+              <div class="factor-header">
+                <span>Network</span>
+                <span>{{ [100, (features.unique_counterparties or 0) * 2]|min|int }}%</span>
+              </div>
+              <div class="factor-bar">
+                <div class="factor-fill" style="width: {{ [100, (features.unique_counterparties or 0) * 2]|min }}%"></div>
+              </div>
+            </div>
+            <div class="factor-item">
+              <div class="factor-header">
+                <span>Reliability</span>
+                <span>{{ [100, 100 - (features.failed_tx_ratio or 0) * 100]|min|int }}%</span>
+              </div>
+              <div class="factor-bar">
+                <div class="factor-fill factor-fill-success" style="width: {{ [100, 100 - (features.failed_tx_ratio or 0) * 100]|min }}%"></div>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="score-rating">
-          {% if score >= 800 %}
-          <span class="rating-badge rating-excellent">
-            <i class="fas fa-star"></i> Excellent
-          </span>
-          {% elif score >= 650 %}
-          <span class="rating-badge rating-good">
-            <i class="fas fa-thumbs-up"></i> Good
-          </span>
-          {% elif score >= 500 %}
-          <span class="rating-badge rating-fair">
-            <i class="fas fa-minus-circle"></i> Fair
-          </span>
-          {% else %}
-          <span class="rating-badge rating-poor">
-            <i class="fas fa-exclamation-triangle"></i> Needs Improvement
-          </span>
-          {% endif %}
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
 
-<!-- Quick Stats -->
-<section class="quick-stats">
-  <div class="container">
-    <div class="quick-stats-grid">
-      <div class="quick-stat-card">
-        <div class="quick-stat-icon">
-          <i class="fas fa-exchange-alt"></i>
+        <!-- Off-Chain Persona (if available) -->
+        {% if offchain %}
+        <div class="persona-card-compact">
+          <h3 class="card-title-sm"><i class="fas fa-user-circle"></i> Persona</h3>
+          <div class="persona-items">
+            {% for key, value in offchain.items() %}
+            <div class="persona-row">
+              <span class="persona-key">{{ key.replace("_", " ")|title }}</span>
+              <span class="persona-val">{{ value }}</span>
+            </div>
+            {% endfor %}
+          </div>
         </div>
-        <div class="quick-stat-info">
-          <span class="quick-stat-value">{{ features.total_transactions or 0 }}</span>
-          <span class="quick-stat-label">Total Transactions</span>
-        </div>
-      </div>
+        {% endif %}
+      </aside>
 
-      <div class="quick-stat-card">
-        <div class="quick-stat-icon">
-          <i class="fas fa-calendar-alt"></i>
+      <!-- RIGHT COLUMN: Charts & Details -->
+      <section class="dashboard-content">
+        {% if time_series and time_series.monthly %}
+        <!-- Primary Charts Row -->
+        <div class="charts-row-primary">
+          <div class="chart-panel chart-wide">
+            <div class="chart-panel-header">
+              <h3><i class="fas fa-chart-bar"></i> Transaction Activity</h3>
+              <div class="chart-legend-inline">
+                <span class="legend-dot-sent"></span> Sent
+                <span class="legend-dot-recv"></span> Received
+              </div>
+            </div>
+            <div class="chart-panel-body">
+              <canvas id="monthlyTxChart"></canvas>
+            </div>
+          </div>
+          
+          <div class="chart-panel chart-wide">
+            <div class="chart-panel-header">
+              <h3><i class="fab fa-ethereum"></i> ETH Flow</h3>
+              <div class="chart-legend-inline">
+                <span class="legend-dot-in"></span> In
+                <span class="legend-dot-out"></span> Out
+                <span class="legend-dot-net"></span> Net
+              </div>
+            </div>
+            <div class="chart-panel-body">
+              <canvas id="monthlyEthChart"></canvas>
+            </div>
+          </div>
         </div>
-        <div class="quick-stat-info">
-          <span class="quick-stat-value">{{ features.account_age_days or 0 }}</span>
-          <span class="quick-stat-label">Account Age (Days)</span>
-        </div>
-      </div>
 
-      <div class="quick-stat-card">
-        <div class="quick-stat-icon">
-          <i class="fas fa-users"></i>
-        </div>
-        <div class="quick-stat-info">
-          <span class="quick-stat-value">{{ features.unique_counterparties or 0 }}</span>
-          <span class="quick-stat-label">Unique Counterparties</span>
-        </div>
-      </div>
+        <!-- Secondary Charts Row -->
+        <div class="charts-row-secondary">
+          <div class="chart-panel">
+            <div class="chart-panel-header">
+              <h3><i class="fas fa-chart-line"></i> Cumulative Growth</h3>
+            </div>
+            <div class="chart-panel-body chart-body-md">
+              <canvas id="cumulativeChart"></canvas>
+            </div>
+          </div>
 
-      <div class="quick-stat-card">
-        <div class="quick-stat-icon">
-          <i class="fab fa-ethereum"></i>
+          <div class="chart-panel">
+            <div class="chart-panel-header">
+              <h3><i class="fas fa-users"></i> Counterparties</h3>
+            </div>
+            <div class="chart-panel-body chart-body-md">
+              <canvas id="counterpartiesChart"></canvas>
+            </div>
+          </div>
         </div>
-        <div class="quick-stat-info">
-          <span class="quick-stat-value">{{ "%.4f"|format(features.net_eth_change or 0) }}</span>
-          <span class="quick-stat-label">Net ETH Change</span>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
 
-<!-- Action Bar -->
-{% if report_enabled %}
-<section class="action-bar">
-  <div class="container">
-    <div class="action-bar-content">
-      <div class="action-bar-info">
-        <i class="fas fa-file-alt"></i>
-        <span>Generate an AI-powered detailed credit report for this wallet</span>
-      </div>
-      <a href="/api/v1/wallets/{{ wallet_address }}/report" class="btn btn-primary">
-        <i class="fas fa-chart-line"></i>
-        View Full Report
-      </a>
-    </div>
-  </div>
-</section>
-{% endif %}
+        <!-- Tertiary Charts Row -->
+        <div class="charts-row-tertiary">
+          <div class="chart-panel chart-sm">
+            <div class="chart-panel-header">
+              <h3><i class="fas fa-calendar-day"></i> By Weekday</h3>
+            </div>
+            <div class="chart-panel-body chart-body-sm">
+              <canvas id="weekdayChart"></canvas>
+            </div>
+          </div>
 
-<!-- Main Content Grid -->
-<section class="details-section">
-  <div class="container">
-    <div class="details-grid">
-      <!-- Features Table -->
-      <div class="details-card features-card">
-        <div class="card-header">
-          <h3 class="card-title">
-            <i class="fas fa-list-ul"></i>
-            On-Chain Features
-          </h3>
-          <span class="card-badge">{{ features|length }} Metrics</span>
+          <div class="chart-panel chart-sm">
+            <div class="chart-panel-header">
+              <h3><i class="fas fa-clock"></i> By Hour (UTC)</h3>
+            </div>
+            <div class="chart-panel-body chart-body-sm">
+              <canvas id="hourlyChart"></canvas>
+            </div>
+          </div>
+
+          <div class="chart-panel chart-sm">
+            <div class="chart-panel-header">
+              <h3><i class="fas fa-coins"></i> Value Distribution</h3>
+            </div>
+            <div class="chart-panel-body chart-body-sm">
+              <canvas id="valueDistChart"></canvas>
+            </div>
+          </div>
+
+          <div class="chart-panel chart-sm">
+            <div class="chart-panel-header">
+              <h3><i class="fas fa-calendar-week"></i> Weekly (12w)</h3>
+            </div>
+            <div class="chart-panel-body chart-body-sm">
+              <canvas id="weeklyChart"></canvas>
+            </div>
+          </div>
         </div>
-        <div class="card-body">
-          <div class="features-table-wrapper">
-            <table class="features-table">
+        {% else %}
+        <!-- No chart data message -->
+        <div class="no-data-panel">
+          <i class="fas fa-chart-area"></i>
+          <h3>Insufficient Data for Charts</h3>
+          <p>This wallet doesn't have enough transaction history to display analytics charts.</p>
+        </div>
+        {% endif %}
+
+        <!-- Detailed Features Table (Collapsible) -->
+        <details class="features-details" open>
+          <summary class="features-summary">
+            <i class="fas fa-database"></i>
+            <span>All On-Chain Features</span>
+            <span class="features-count">{{ features|length }} metrics</span>
+            <i class="fas fa-chevron-down toggle-icon"></i>
+          </summary>
+          <div class="features-table-container">
+            <table class="features-table-compact">
               <thead>
                 <tr>
+                  <th>Feature</th>
+                  <th>Value</th>
                   <th>Feature</th>
                   <th>Value</th>
                 </tr>
               </thead>
               <tbody>
-                {% for key, value in features.items() %}
+                {% set feature_items = features.items()|list %}
+                {% for i in range(0, feature_items|length, 2) %}
                 <tr>
-                  <td>
-                    <span class="feature-name">{{ key.replace("_", " ")|title }}</span>
-                    <code class="feature-key">{{ key }}</code>
-                  </td>
-                  <td>
-                    <span class="feature-value">
-                      {% if value is number %}
-                        {% if value == value|int %}
-                          {{ value|int }}
-                        {% else %}
-                          {{ "%.4f"|format(value) }}
-                        {% endif %}
+                  <td class="feature-name-cell">{{ feature_items[i][0].replace("_", " ")|title }}</td>
+                  <td class="feature-value-cell">
+                    {% if feature_items[i][1] is number %}
+                      {% if feature_items[i][1] == feature_items[i][1]|int %}
+                        {{ feature_items[i][1]|int }}
                       {% else %}
-                        {{ value }}
+                        {{ "%.4f"|format(feature_items[i][1]) }}
                       {% endif %}
-                    </span>
+                    {% else %}
+                      {{ feature_items[i][1] }}
+                    {% endif %}
                   </td>
+                  {% if i + 1 < feature_items|length %}
+                  <td class="feature-name-cell">{{ feature_items[i+1][0].replace("_", " ")|title }}</td>
+                  <td class="feature-value-cell">
+                    {% if feature_items[i+1][1] is number %}
+                      {% if feature_items[i+1][1] == feature_items[i+1][1]|int %}
+                        {{ feature_items[i+1][1]|int }}
+                      {% else %}
+                        {{ "%.4f"|format(feature_items[i+1][1]) }}
+                      {% endif %}
+                    {% else %}
+                      {{ feature_items[i+1][1] }}
+                    {% endif %}
+                  </td>
+                  {% else %}
+                  <td></td>
+                  <td></td>
+                  {% endif %}
                 </tr>
                 {% endfor %}
               </tbody>
             </table>
           </div>
-        </div>
-      </div>
-
-      <!-- Off-Chain Persona -->
-      <div class="details-card persona-card">
-        <div class="card-header">
-          <h3 class="card-title">
-            <i class="fas fa-user-circle"></i>
-            Off-Chain Persona
-          </h3>
-        </div>
-        <div class="card-body">
-          {% if offchain %}
-          <div class="persona-grid">
-            {% for key, value in offchain.items() %}
-            <div class="persona-item">
-              <div class="persona-icon">
-                {% if 'age' in key.lower() %}
-                <i class="fas fa-birthday-cake"></i>
-                {% elif 'income' in key.lower() or 'salary' in key.lower() %}
-                <i class="fas fa-money-bill-wave"></i>
-                {% elif 'job' in key.lower() or 'occupation' in key.lower() or 'employment' in key.lower() %}
-                <i class="fas fa-briefcase"></i>
-                {% elif 'education' in key.lower() %}
-                <i class="fas fa-graduation-cap"></i>
-                {% elif 'location' in key.lower() or 'country' in key.lower() or 'city' in key.lower() %}
-                <i class="fas fa-map-marker-alt"></i>
-                {% elif 'risk' in key.lower() %}
-                <i class="fas fa-exclamation-triangle"></i>
-                {% else %}
-                <i class="fas fa-tag"></i>
-                {% endif %}
-              </div>
-              <div class="persona-details">
-                <span class="persona-label">{{ key.replace("_", " ")|title }}</span>
-                <span class="persona-value">{{ value }}</span>
-              </div>
-            </div>
-            {% endfor %}
-          </div>
-          {% else %}
-          <div class="empty-state">
-            <i class="fas fa-user-slash"></i>
-            <p>No off-chain persona data available</p>
-          </div>
-          {% endif %}
-        </div>
-      </div>
+        </details>
+      </section>
     </div>
   </div>
-</section>
-
-<!-- Score Analysis -->
-<section class="analysis-section">
-  <div class="container">
-    <div class="analysis-card">
-      <div class="card-header">
-        <h3 class="card-title">
-          <i class="fas fa-chart-line"></i>
-          Score Analysis
-        </h3>
-      </div>
-      <div class="card-body">
-        <div class="score-breakdown">
-          <div class="breakdown-item">
-            <div class="breakdown-header">
-              <span class="breakdown-label">Transaction Activity</span>
-              <span class="breakdown-value">{{ features.total_transactions or 0 }} txns</span>
-            </div>
-            <div class="progress-bar">
-              <div class="progress-fill" style="width: {{ [100, (features.total_transactions or 0) / 10]|min }}%;"></div>
-            </div>
-          </div>
-
-          <div class="breakdown-item">
-            <div class="breakdown-header">
-              <span class="breakdown-label">Account Maturity</span>
-              <span class="breakdown-value">{{ features.account_age_days or 0 }} days</span>
-            </div>
-            <div class="progress-bar">
-              <div class="progress-fill" style="width: {{ [100, (features.account_age_days or 0) / 3.65]|min }}%;"></div>
-            </div>
-          </div>
-
-          <div class="breakdown-item">
-            <div class="breakdown-header">
-              <span class="breakdown-label">Network Diversity</span>
-              <span class="breakdown-value">{{ features.unique_counterparties or 0 }} addresses</span>
-            </div>
-            <div class="progress-bar">
-              <div class="progress-fill" style="width: {{ [100, (features.unique_counterparties or 0) * 2]|min }}%;"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- Charts Section -->
-{% if time_series and time_series.monthly %}
-<section class="charts-section">
-  <div class="container">
-    <div class="section-header">
-      <h2 class="section-title">
-        <i class="fas fa-chart-area"></i>
-        Activity Analytics
-      </h2>
-      <p class="section-subtitle">Historical transaction patterns and trends</p>
-    </div>
-
-    <!-- Charts Grid -->
-    <div class="charts-grid">
-      <!-- Monthly Transaction Count Chart -->
-      <div class="chart-card chart-large">
-        <div class="chart-header">
-          <h3 class="chart-title">
-            <i class="fas fa-chart-bar"></i>
-            Monthly Transaction Activity
-          </h3>
-          <div class="chart-legend">
-            <span class="legend-item legend-sent"><span class="legend-dot"></span> Sent</span>
-            <span class="legend-item legend-received"><span class="legend-dot"></span> Received</span>
-          </div>
-        </div>
-        <div class="chart-body">
-          <canvas id="monthlyTxChart"></canvas>
-        </div>
-      </div>
-
-      <!-- Monthly ETH Volume Chart -->
-      <div class="chart-card chart-large">
-        <div class="chart-header">
-          <h3 class="chart-title">
-            <i class="fab fa-ethereum"></i>
-            Monthly ETH Flow
-          </h3>
-          <div class="chart-legend">
-            <span class="legend-item legend-in"><span class="legend-dot"></span> Inflow</span>
-            <span class="legend-item legend-out"><span class="legend-dot"></span> Outflow</span>
-            <span class="legend-item legend-net"><span class="legend-dot"></span> Net</span>
-          </div>
-        </div>
-        <div class="chart-body">
-          <canvas id="monthlyEthChart"></canvas>
-        </div>
-      </div>
-
-      <!-- Cumulative Growth Chart -->
-      <div class="chart-card chart-large">
-        <div class="chart-header">
-          <h3 class="chart-title">
-            <i class="fas fa-chart-line"></i>
-            Cumulative Transaction Growth
-          </h3>
-        </div>
-        <div class="chart-body">
-          <canvas id="cumulativeChart"></canvas>
-        </div>
-      </div>
-
-      <!-- Weekly Activity Chart -->
-      <div class="chart-card">
-        <div class="chart-header">
-          <h3 class="chart-title">
-            <i class="fas fa-calendar-week"></i>
-            Weekly Activity (Last 12 Weeks)
-          </h3>
-        </div>
-        <div class="chart-body">
-          <canvas id="weeklyChart"></canvas>
-        </div>
-      </div>
-
-      <!-- Weekday Distribution Chart -->
-      <div class="chart-card">
-        <div class="chart-header">
-          <h3 class="chart-title">
-            <i class="fas fa-calendar-day"></i>
-            Activity by Weekday
-          </h3>
-        </div>
-        <div class="chart-body">
-          <canvas id="weekdayChart"></canvas>
-        </div>
-      </div>
-
-      <!-- Hourly Distribution Chart -->
-      <div class="chart-card">
-        <div class="chart-header">
-          <h3 class="chart-title">
-            <i class="fas fa-clock"></i>
-            Activity by Hour (UTC)
-          </h3>
-        </div>
-        <div class="chart-body">
-          <canvas id="hourlyChart"></canvas>
-        </div>
-      </div>
-
-      <!-- Transaction Value Distribution -->
-      <div class="chart-card">
-        <div class="chart-header">
-          <h3 class="chart-title">
-            <i class="fas fa-coins"></i>
-            Transaction Value Distribution
-          </h3>
-        </div>
-        <div class="chart-body">
-          <canvas id="valueDistChart"></canvas>
-        </div>
-      </div>
-
-      <!-- Monthly Counterparties -->
-      <div class="chart-card">
-        <div class="chart-header">
-          <h3 class="chart-title">
-            <i class="fas fa-users"></i>
-            Monthly Unique Counterparties
-          </h3>
-        </div>
-        <div class="chart-body">
-          <canvas id="counterpartiesChart"></canvas>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-{% endif %}
-
-<!-- Navigation -->
-<section class="back-nav">
-  <div class="container">
-    <a href="/" class="back-link">
-      <i class="fas fa-arrow-left"></i>
-      <span>Analyze Another Wallet</span>
-    </a>
-  </div>
-</section>
+</main>
 {% endblock %}
 
 {% block scripts %}
@@ -440,12 +339,13 @@
   // Time series data from backend
   const timeSeriesData = {{ time_series | tojson | safe }};
   
-  // Chart.js default configuration
+  // Chart.js configuration
   const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
   
-  Chart.defaults.color = isDarkMode ? '#a0aec0' : '#64748b';
-  Chart.defaults.borderColor = isDarkMode ? '#2d3748' : '#e2e8f0';
+  Chart.defaults.color = isDarkMode ? '#94a3b8' : '#64748b';
+  Chart.defaults.borderColor = isDarkMode ? '#334155' : '#e2e8f0';
   Chart.defaults.font.family = "'Inter', sans-serif";
+  Chart.defaults.font.size = 11;
   
   // Color palette
   const colors = {
@@ -460,395 +360,211 @@
     net: '#3b82f6'
   };
 
-  // Animate score ring on load
+  // Compact chart options
+  const compactOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { 
+        backgroundColor: isDarkMode ? '#1e293b' : '#fff',
+        titleColor: isDarkMode ? '#f1f5f9' : '#1e293b',
+        bodyColor: isDarkMode ? '#94a3b8' : '#64748b',
+        borderColor: isDarkMode ? '#334155' : '#e2e8f0',
+        borderWidth: 1,
+        padding: 8,
+        cornerRadius: 6
+      }
+    },
+    scales: {
+      x: { 
+        grid: { display: false },
+        ticks: { maxRotation: 45, font: { size: 10 } }
+      },
+      y: { 
+        beginAtZero: true,
+        grid: { color: isDarkMode ? '#1e293b' : '#f1f5f9' },
+        ticks: { font: { size: 10 } }
+      }
+    }
+  };
+
   document.addEventListener('DOMContentLoaded', function() {
-    const scoreRing = document.querySelector('.score-ring');
-    if (scoreRing) {
-      const score = parseFloat(scoreRing.dataset.score) || 0;
+    // Animate score ring
+    const scoreContainer = document.querySelector('.score-ring-container');
+    if (scoreContainer) {
+      const score = parseFloat(scoreContainer.dataset.score) || 0;
       const progress = (score / 1000) * 100;
-      const circle = scoreRing.querySelector('.score-ring-progress');
-      const circumference = 2 * Math.PI * 90;
+      const circle = scoreContainer.querySelector('.score-ring-progress');
+      const circumference = 2 * Math.PI * 52;
       const offset = circumference - (progress / 100) * circumference;
       
       circle.style.strokeDasharray = circumference;
       circle.style.strokeDashoffset = circumference;
       
       setTimeout(() => {
-        circle.style.transition = 'stroke-dashoffset 1.5s ease-out';
+        circle.style.transition = 'stroke-dashoffset 1.2s ease-out';
         circle.style.strokeDashoffset = offset;
       }, 100);
     }
 
-    // Initialize charts if data exists
+    // Initialize charts
     if (timeSeriesData && timeSeriesData.monthly && timeSeriesData.monthly.length > 0) {
-      initializeCharts();
+      initCharts();
     }
+    
+    // Copy functionality
+    document.querySelectorAll('[data-copy]').forEach(btn => {
+      btn.addEventListener('click', function() {
+        navigator.clipboard.writeText(this.dataset.copy);
+        const icon = this.querySelector('i');
+        icon.className = 'fas fa-check';
+        setTimeout(() => icon.className = 'fas fa-copy', 1500);
+      });
+    });
   });
 
-  function initializeCharts() {
-    // Monthly Transaction Chart
-    const monthlyTxCtx = document.getElementById('monthlyTxChart');
-    if (monthlyTxCtx && timeSeriesData.monthly) {
-      const last12Months = timeSeriesData.monthly.slice(-12);
-      new Chart(monthlyTxCtx, {
+  function initCharts() {
+    const last12 = timeSeriesData.monthly.slice(-12);
+    
+    // Monthly Transactions
+    const txCtx = document.getElementById('monthlyTxChart');
+    if (txCtx) {
+      new Chart(txCtx, {
         type: 'bar',
         data: {
-          labels: last12Months.map(d => d.month),
+          labels: last12.map(d => d.month.slice(-7)),
           datasets: [
-            {
-              label: 'Sent',
-              data: last12Months.map(d => d.tx_sent),
-              backgroundColor: colors.sent + '80',
-              borderColor: colors.sent,
-              borderWidth: 1
-            },
-            {
-              label: 'Received',
-              data: last12Months.map(d => d.tx_received),
-              backgroundColor: colors.received + '80',
-              borderColor: colors.received,
-              borderWidth: 1
-            }
+            { label: 'Sent', data: last12.map(d => d.tx_sent), backgroundColor: colors.sent + '90', borderRadius: 3 },
+            { label: 'Received', data: last12.map(d => d.tx_received), backgroundColor: colors.received + '90', borderRadius: 3 }
           ]
         },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false }
-          },
-          scales: {
-            x: {
-              stacked: true,
-              grid: { display: false }
-            },
-            y: {
-              stacked: true,
-              beginAtZero: true,
-              title: { display: true, text: 'Transactions' }
-            }
-          }
-        }
+        options: { ...compactOptions, scales: { ...compactOptions.scales, x: { ...compactOptions.scales.x, stacked: true }, y: { ...compactOptions.scales.y, stacked: true } } }
       });
     }
 
-    // Monthly ETH Flow Chart
-    const monthlyEthCtx = document.getElementById('monthlyEthChart');
-    if (monthlyEthCtx && timeSeriesData.monthly) {
-      const last12Months = timeSeriesData.monthly.slice(-12);
-      new Chart(monthlyEthCtx, {
+    // ETH Flow
+    const ethCtx = document.getElementById('monthlyEthChart');
+    if (ethCtx) {
+      new Chart(ethCtx, {
         type: 'line',
         data: {
-          labels: last12Months.map(d => d.month),
+          labels: last12.map(d => d.month.slice(-7)),
           datasets: [
-            {
-              label: 'ETH Received',
-              data: last12Months.map(d => d.eth_received),
-              borderColor: colors.received,
-              backgroundColor: colors.received + '20',
-              fill: true,
-              tension: 0.4
-            },
-            {
-              label: 'ETH Sent',
-              data: last12Months.map(d => d.eth_sent),
-              borderColor: colors.sent,
-              backgroundColor: colors.sent + '20',
-              fill: true,
-              tension: 0.4
-            },
-            {
-              label: 'Net ETH',
-              data: last12Months.map(d => d.net_eth),
-              borderColor: colors.net,
-              backgroundColor: 'transparent',
-              borderWidth: 2,
-              borderDash: [5, 5],
-              tension: 0.4,
-              fill: false
-            }
+            { label: 'In', data: last12.map(d => d.eth_received), borderColor: colors.received, backgroundColor: colors.received + '20', fill: true, tension: 0.3 },
+            { label: 'Out', data: last12.map(d => d.eth_sent), borderColor: colors.sent, backgroundColor: colors.sent + '20', fill: true, tension: 0.3 },
+            { label: 'Net', data: last12.map(d => d.net_eth), borderColor: colors.net, borderDash: [4,4], fill: false, tension: 0.3 }
           ]
         },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false }
-          },
-          scales: {
-            x: { grid: { display: false } },
-            y: {
-              beginAtZero: true,
-              title: { display: true, text: 'ETH' }
-            }
-          }
-        }
+        options: compactOptions
       });
     }
 
-    // Cumulative Growth Chart
-    const cumulativeCtx = document.getElementById('cumulativeChart');
-    if (cumulativeCtx && timeSeriesData.cumulative) {
-      new Chart(cumulativeCtx, {
+    // Cumulative
+    const cumCtx = document.getElementById('cumulativeChart');
+    if (cumCtx && timeSeriesData.cumulative) {
+      new Chart(cumCtx, {
         type: 'line',
         data: {
-          labels: timeSeriesData.cumulative.map(d => d.month),
-          datasets: [
-            {
-              label: 'Total Transactions',
-              data: timeSeriesData.cumulative.map(d => d.cumulative_tx),
-              borderColor: colors.primary,
-              backgroundColor: colors.primary + '20',
-              fill: true,
-              tension: 0.4,
-              yAxisID: 'y'
-            },
-            {
-              label: 'Cumulative Net ETH',
-              data: timeSeriesData.cumulative.map(d => d.cumulative_net),
-              borderColor: colors.success,
-              backgroundColor: 'transparent',
-              borderWidth: 2,
-              tension: 0.4,
-              fill: false,
-              yAxisID: 'y1'
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          interaction: {
-            mode: 'index',
-            intersect: false
-          },
-          plugins: {
-            legend: { display: true, position: 'top' }
-          },
-          scales: {
-            x: { grid: { display: false } },
-            y: {
-              type: 'linear',
-              display: true,
-              position: 'left',
-              title: { display: true, text: 'Transactions' }
-            },
-            y1: {
-              type: 'linear',
-              display: true,
-              position: 'right',
-              title: { display: true, text: 'Net ETH' },
-              grid: { drawOnChartArea: false }
-            }
-          }
-        }
-      });
-    }
-
-    // Weekly Activity Chart
-    const weeklyCtx = document.getElementById('weeklyChart');
-    if (weeklyCtx && timeSeriesData.weekly) {
-      const last12Weeks = timeSeriesData.weekly.slice(-12);
-      new Chart(weeklyCtx, {
-        type: 'bar',
-        data: {
-          labels: last12Weeks.map(d => d.week),
+          labels: timeSeriesData.cumulative.map(d => d.month.slice(-7)),
           datasets: [{
-            label: 'Transactions',
-            data: last12Weeks.map(d => d.tx_count),
-            backgroundColor: colors.primary + '80',
+            label: 'Cumulative Tx',
+            data: timeSeriesData.cumulative.map(d => d.cumulative_tx),
             borderColor: colors.primary,
-            borderWidth: 1
+            backgroundColor: colors.primary + '20',
+            fill: true,
+            tension: 0.3
           }]
         },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { grid: { display: false } },
-            y: { beginAtZero: true }
-          }
-        }
+        options: compactOptions
       });
     }
 
-    // Weekday Distribution Chart
-    const weekdayCtx = document.getElementById('weekdayChart');
-    if (weekdayCtx && timeSeriesData.weekday_distribution) {
-      const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-      const weekdayData = new Array(7).fill(0);
-      timeSeriesData.weekday_distribution.forEach(d => {
-        weekdayData[d.day_num] = d.count;
-      });
-      
-      new Chart(weekdayCtx, {
-        type: 'bar',
-        data: {
-          labels: weekdays,
-          datasets: [{
-            label: 'Transactions',
-            data: weekdayData,
-            backgroundColor: weekdayData.map((_, i) => 
-              i >= 5 ? colors.warning + '80' : colors.info + '80'
-            ),
-            borderColor: weekdayData.map((_, i) => 
-              i >= 5 ? colors.warning : colors.info
-            ),
-            borderWidth: 1
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { grid: { display: false } },
-            y: { beginAtZero: true }
-          }
-        }
-      });
-    }
-
-    // Hourly Distribution Chart
-    const hourlyCtx = document.getElementById('hourlyChart');
-    if (hourlyCtx && timeSeriesData.hourly_distribution) {
-      const hourlyData = new Array(24).fill(0);
-      timeSeriesData.hourly_distribution.forEach(d => {
-        hourlyData[d.hour] = d.count;
-      });
-      
-      new Chart(hourlyCtx, {
+    // Counterparties
+    const cpCtx = document.getElementById('counterpartiesChart');
+    if (cpCtx) {
+      new Chart(cpCtx, {
         type: 'line',
         data: {
-          labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+          labels: last12.map(d => d.month.slice(-7)),
           datasets: [{
-            label: 'Transactions',
-            data: hourlyData,
-            borderColor: colors.secondary,
-            backgroundColor: colors.secondary + '20',
+            label: 'Counterparties',
+            data: last12.map(d => d.unique_counterparties),
+            borderColor: colors.info,
+            backgroundColor: colors.info + '20',
             fill: true,
-            tension: 0.4
+            tension: 0.3
           }]
         },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { grid: { display: false } },
-            y: { beginAtZero: true }
-          }
-        }
+        options: compactOptions
       });
     }
 
-    // Value Distribution Chart
-    const valueDistCtx = document.getElementById('valueDistChart');
-    if (valueDistCtx && timeSeriesData.value_distribution) {
-      new Chart(valueDistCtx, {
+    // Weekday
+    const wdCtx = document.getElementById('weekdayChart');
+    if (wdCtx && timeSeriesData.weekday_distribution) {
+      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const wdData = new Array(7).fill(0);
+      timeSeriesData.weekday_distribution.forEach(d => wdData[d.day_num] = d.count);
+      new Chart(wdCtx, {
+        type: 'bar',
+        data: {
+          labels: days,
+          datasets: [{ data: wdData, backgroundColor: wdData.map((_, i) => i >= 5 ? colors.warning + '80' : colors.info + '80'), borderRadius: 3 }]
+        },
+        options: compactOptions
+      });
+    }
+
+    // Hourly
+    const hrCtx = document.getElementById('hourlyChart');
+    if (hrCtx && timeSeriesData.hourly_distribution) {
+      const hrData = new Array(24).fill(0);
+      timeSeriesData.hourly_distribution.forEach(d => hrData[d.hour] = d.count);
+      new Chart(hrCtx, {
+        type: 'line',
+        data: {
+          labels: Array.from({length: 24}, (_, i) => i),
+          datasets: [{ data: hrData, borderColor: colors.secondary, backgroundColor: colors.secondary + '20', fill: true, tension: 0.4 }]
+        },
+        options: compactOptions
+      });
+    }
+
+    // Value Distribution
+    const vdCtx = document.getElementById('valueDistChart');
+    if (vdCtx && timeSeriesData.value_distribution) {
+      new Chart(vdCtx, {
         type: 'doughnut',
         data: {
-          labels: timeSeriesData.value_distribution.map(d => d.bucket + ' ETH'),
+          labels: timeSeriesData.value_distribution.map(d => d.bucket),
           datasets: [{
             data: timeSeriesData.value_distribution.map(d => d.count),
-            backgroundColor: [
-              colors.success + '80',
-              colors.info + '80',
-              colors.primary + '80',
-              colors.secondary + '80',
-              colors.warning + '80',
-              colors.danger + '80',
-              '#6b7280' + '80'
-            ],
+            backgroundColor: [colors.success+'90', colors.info+'90', colors.primary+'90', colors.secondary+'90', colors.warning+'90', colors.danger+'90', '#6b7280'+'90'],
             borderWidth: 0
           }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              display: true,
-              position: 'right',
-              labels: { boxWidth: 12, padding: 8 }
-            }
-          }
+          plugins: { legend: { display: true, position: 'right', labels: { boxWidth: 10, font: { size: 9 } } } }
         }
       });
     }
 
-    // Monthly Counterparties Chart
-    const counterpartiesCtx = document.getElementById('counterpartiesChart');
-    if (counterpartiesCtx && timeSeriesData.monthly) {
-      const last12Months = timeSeriesData.monthly.slice(-12);
-      new Chart(counterpartiesCtx, {
-        type: 'line',
+    // Weekly
+    const wkCtx = document.getElementById('weeklyChart');
+    if (wkCtx && timeSeriesData.weekly) {
+      const last12w = timeSeriesData.weekly.slice(-12);
+      new Chart(wkCtx, {
+        type: 'bar',
         data: {
-          labels: last12Months.map(d => d.month),
-          datasets: [{
-            label: 'Unique Counterparties',
-            data: last12Months.map(d => d.unique_counterparties),
-            borderColor: colors.info,
-            backgroundColor: colors.info + '20',
-            fill: true,
-            tension: 0.4
-          }]
+          labels: last12w.map((d, i) => `W${i+1}`),
+          datasets: [{ data: last12w.map(d => d.tx_count), backgroundColor: colors.primary + '80', borderRadius: 2 }]
         },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { grid: { display: false } },
-            y: { beginAtZero: true }
-          }
-        }
+        options: compactOptions
       });
     }
-  }
-
-  // Theme change handling - update chart colors without page reload
-  // Store initial theme to detect actual user-triggered changes
-  let initialTheme = document.documentElement.getAttribute('data-theme');
-  let themeInitialized = false;
-  
-  // Only listen for theme changes after initial page load is complete
-  setTimeout(() => {
-    themeInitialized = true;
-  }, 1000);
-  
-  const observer = new MutationObserver((mutations) => {
-    if (!themeInitialized) return; // Skip during initial page load
-    
-    mutations.forEach((mutation) => {
-      if (mutation.attributeName === 'data-theme') {
-        const newTheme = document.documentElement.getAttribute('data-theme');
-        // Only act if theme actually changed (user clicked toggle)
-        if (newTheme !== initialTheme) {
-          initialTheme = newTheme;
-          // Update chart colors dynamically instead of reloading
-          updateChartTheme(newTheme === 'dark');
-        }
-      }
-    });
-  });
-  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-  
-  // Update chart colors without page reload
-  function updateChartTheme(isDark) {
-    const textColor = isDark ? '#a0aec0' : '#64748b';
-    const borderColor = isDark ? '#2d3748' : '#e2e8f0';
-    
-    Chart.defaults.color = textColor;
-    Chart.defaults.borderColor = borderColor;
-    
-    // Update all existing charts
-    Object.values(Chart.instances).forEach(chart => {
-      chart.options.scales.x.ticks.color = textColor;
-      chart.options.scales.y.ticks.color = textColor;
-      chart.update('none');
-    });
   }
 </script>
 {% endblock %}
