@@ -23,9 +23,14 @@ ENV PATH="/root/.local/bin:$PATH"
 # Copy requirements first for better caching
 COPY requirements.txt .
 COPY pyproject.toml .
+COPY uv.lock .
 
 # Install Python dependencies using uv
-RUN uv sync
+# Use --no-install-project to install dependencies without requiring the source code yet
+RUN uv sync --frozen --no-install-project
+
+# Add virtual environment to PATH
+ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy application code
 COPY . .
