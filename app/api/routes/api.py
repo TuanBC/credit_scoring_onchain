@@ -40,18 +40,18 @@ async def get_wallet_score(
 
 
 @router.get(
-    "/v1/wallets/{wallet_address}/report",
+    "/v1/wallets/{wallet_address}/report/markdown",
     response_class=PlainTextResponse,
-    summary="Generate Markdown credit report",
+    summary="Generate raw Markdown credit report",
 )
-async def get_wallet_report(
+async def get_wallet_report_markdown(
     wallet_address: str = Path(
         ..., description="Checksum or lowercase Ethereum address"
     ),
     scoring_engine: ScoringEngine = Depends(get_scoring_engine),
     report_service: WalletReportService = Depends(require_report_service),
 ) -> str:
-    """Generate an LLM-backed markdown report for the wallet."""
+    """Generate an LLM-backed markdown report for the wallet (raw markdown)."""
     result = await scoring_engine.evaluate_wallet(wallet_address)
     if not result.onchain_features:
         raise HTTPException(

@@ -1,0 +1,411 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav class="breadcrumb">
+  <div class="container">
+    <a href="/" class="breadcrumb-item">
+      <i class="fas fa-home"></i>
+      Home
+    </a>
+    <i class="fas fa-chevron-right breadcrumb-separator"></i>
+    <a href="/scores" class="breadcrumb-item" onclick="history.back(); return false;">
+      Score Details
+    </a>
+    <i class="fas fa-chevron-right breadcrumb-separator"></i>
+    <span class="breadcrumb-item active">Credit Report</span>
+  </div>
+</nav>
+
+<!-- Report Header -->
+<section class="report-header">
+  <div class="container">
+    <div class="report-header-content">
+      <!-- Left: Info -->
+      <div class="report-info">
+        <div class="report-badge">
+          <i class="fas fa-file-alt"></i>
+          <span>AI-Generated Credit Report</span>
+        </div>
+        <h1 class="report-title">Wallet Credit Analysis</h1>
+        <div class="report-meta">
+          <div class="meta-item">
+            <i class="fas fa-wallet"></i>
+            <code class="wallet-address-mini">{{ wallet_address[:10] }}...{{ wallet_address[-8:] }}</code>
+            <button class="copy-btn-small" data-copy="{{ wallet_address }}" title="Copy full address">
+              <i class="fas fa-copy"></i>
+            </button>
+          </div>
+          <div class="meta-item">
+            <i class="fas fa-calendar"></i>
+            <span>Generated: {{ generated_at }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Score Summary -->
+      <div class="report-score-summary">
+        <div class="score-card-mini">
+          <div class="score-number">{{ "%.0f"|format(credit_score) }}</div>
+          <div class="score-label">Credit Score</div>
+          <div class="score-grade grade-{{ grade_info.grade }}">
+            Grade {{ grade_info.grade }}: {{ grade_info.risk_category }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Quick Stats Bar -->
+<section class="report-stats-bar">
+  <div class="container">
+    <div class="report-stats-grid">
+      <div class="report-stat">
+        <span class="report-stat-value">{{ transaction_count }}</span>
+        <span class="report-stat-label">Transactions</span>
+      </div>
+      <div class="report-stat">
+        <span class="report-stat-value">{{ grade_info.grade }}</span>
+        <span class="report-stat-label">Grade</span>
+      </div>
+      <div class="report-stat">
+        <span class="report-stat-value">{{ "%.1f"|format(grade_info.expected_bad_rate) }}%</span>
+        <span class="report-stat-label">Expected Bad Rate</span>
+      </div>
+      <div class="report-stat">
+        <span class="report-stat-value">{{ features|length }}</span>
+        <span class="report-stat-label">Features Analyzed</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Main Report Content -->
+<section class="report-content">
+  <div class="container">
+    <div class="report-layout">
+      <!-- Left Column: AI Report -->
+      <div class="report-main">
+        <!-- AI Analysis Card -->
+        <div class="report-card">
+          <div class="report-card-header">
+            <div class="header-left">
+              <i class="fas fa-robot"></i>
+              <h2>AI Credit Analysis</h2>
+            </div>
+            <div class="header-actions">
+              <button class="btn-icon" id="copyReport" title="Copy report">
+                <i class="fas fa-copy"></i>
+              </button>
+              <button class="btn-icon" id="downloadReport" title="Download as Markdown">
+                <i class="fas fa-download"></i>
+              </button>
+              <button class="btn-icon" id="printReport" title="Print report">
+                <i class="fas fa-print"></i>
+              </button>
+            </div>
+          </div>
+          <div class="report-card-body">
+            <div class="markdown-content" id="reportContent">
+              <!-- Content will be rendered by JavaScript from raw markdown -->
+              <div class="loading-placeholder">
+                <i class="fas fa-spinner fa-spin"></i>
+                <span>Rendering report...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Sidebar -->
+      <div class="report-sidebar">
+        <!-- Grade Info Card -->
+        <div class="sidebar-card">
+          <div class="sidebar-card-header">
+            <i class="fas fa-chart-pie"></i>
+            <h3>Risk Grade</h3>
+          </div>
+          <div class="sidebar-card-body">
+            <div class="grade-display grade-{{ grade_info.grade }}">
+              <span class="grade-number">{{ grade_info.grade }}</span>
+              <span class="grade-category">{{ grade_info.risk_category }}</span>
+            </div>
+            <div class="grade-meter">
+              <div class="grade-meter-track">
+                <div class="grade-meter-fill" data-percent="{{ grade_info.meter_percent }}"></div>
+                <div class="grade-meter-marker" data-percent="{{ grade_info.meter_percent }}"></div>
+              </div>
+              <div class="grade-meter-labels">
+                <span>High Risk</span>
+                <span>Low Risk</span>
+              </div>
+            </div>
+            <div class="grade-details">
+              <div class="grade-detail-item">
+                <span class="label">Score Range</span>
+                <span class="value">{{ grade_info.min_score }} - {{ grade_info.max_score }}</span>
+              </div>
+              <div class="grade-detail-item">
+                <span class="label">Expected Bad Rate</span>
+                <span class="value">{{ "%.1f"|format(grade_info.expected_bad_rate) }}%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- On-Chain Features Card -->
+        <div class="sidebar-card">
+          <div class="sidebar-card-header">
+            <i class="fas fa-cubes"></i>
+            <h3>On-Chain Features</h3>
+          </div>
+          <div class="sidebar-card-body">
+            <div class="feature-list">
+              {% for key, value in onchain_features.items() %}
+              <div class="feature-item">
+                <span class="feature-label">{{ key.replace("_", " ")|title }}</span>
+                <span class="feature-value">
+                  {% if value is number %}
+                    {% if value == value|int %}
+                      {{ value|int }}
+                    {% else %}
+                      {{ "%.4f"|format(value) }}
+                    {% endif %}
+                  {% else %}
+                    {{ value }}
+                  {% endif %}
+                </span>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Off-Chain Persona Card -->
+        {% if offchain_data %}
+        <div class="sidebar-card">
+          <div class="sidebar-card-header">
+            <i class="fas fa-user-circle"></i>
+            <h3>Off-Chain Persona</h3>
+          </div>
+          <div class="sidebar-card-body">
+            <div class="feature-list">
+              {% for key, value in offchain_data.items() %}
+              <div class="feature-item">
+                <span class="feature-label">{{ key.replace("_", " ")|title }}</span>
+                <span class="feature-value">{{ value }}</span>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Quick Links Card -->
+        <div class="sidebar-card">
+          <div class="sidebar-card-header">
+            <i class="fas fa-link"></i>
+            <h3>Quick Links</h3>
+          </div>
+          <div class="sidebar-card-body">
+            <div class="quick-links-list">
+              <a href="https://etherscan.io/address/{{ wallet_address }}" target="_blank" class="quick-link">
+                <i class="fas fa-external-link-alt"></i>
+                View on Etherscan
+              </a>
+              <a href="/api/v1/wallets/{{ wallet_address }}/score" target="_blank" class="quick-link">
+                <i class="fas fa-code"></i>
+                API Score Endpoint
+              </a>
+              <a href="/api/v1/wallets/{{ wallet_address }}/report/markdown" target="_blank" class="quick-link">
+                <i class="fas fa-file-alt"></i>
+                Raw Markdown
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Grade Legend -->
+<section class="grade-legend-section">
+  <div class="container">
+    <div class="grade-legend-card">
+      <div class="grade-legend-header">
+        <i class="fas fa-info-circle"></i>
+        <h3>Credit Grade Reference</h3>
+      </div>
+      <div class="grade-legend-body">
+        <div class="grade-table-wrapper">
+          <table class="grade-table">
+            <thead>
+              <tr>
+                <th>Grade</th>
+                <th>Score Range</th>
+                <th>Risk Category</th>
+                <th>Expected Bad Rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="{% if grade_info.grade == 1 %}active{% endif %}">
+                <td><span class="grade-badge grade-1">1</span></td>
+                <td>700+</td>
+                <td>Ultra Low Risk (A++)</td>
+                <td>0.0%</td>
+              </tr>
+              <tr class="{% if grade_info.grade == 2 %}active{% endif %}">
+                <td><span class="grade-badge grade-2">2</span></td>
+                <td>653 - 699</td>
+                <td>Very Low Risk (A+)</td>
+                <td>1.7%</td>
+              </tr>
+              <tr class="{% if grade_info.grade == 3 %}active{% endif %}">
+                <td><span class="grade-badge grade-3">3</span></td>
+                <td>600 - 652</td>
+                <td>Low Risk (A)</td>
+                <td>2.7%</td>
+              </tr>
+              <tr class="{% if grade_info.grade == 4 %}active{% endif %}">
+                <td><span class="grade-badge grade-4">4</span></td>
+                <td>570 - 599</td>
+                <td>Moderate Risk (B)</td>
+                <td>4.6%</td>
+              </tr>
+              <tr class="{% if grade_info.grade == 5 %}active{% endif %}">
+                <td><span class="grade-badge grade-5">5</span></td>
+                <td>528 - 569</td>
+                <td>High Risk (C)</td>
+                <td>17.3%</td>
+              </tr>
+              <tr class="{% if grade_info.grade == 6 %}active{% endif %}">
+                <td><span class="grade-badge grade-6">6</span></td>
+                <td>Below 528</td>
+                <td>Very High Risk (C-)</td>
+                <td>40.4%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Back Navigation -->
+<section class="back-nav">
+  <div class="container">
+    <a href="/" class="back-link">
+      <i class="fas fa-arrow-left"></i>
+      <span>Analyze Another Wallet</span>
+    </a>
+  </div>
+</section>
+
+<!-- Hidden data for JS -->
+<script id="reportData" type="application/json">
+{
+  "wallet_address": "{{ wallet_address }}",
+  "credit_score": {{ credit_score }},
+  "report_markdown_raw": {{ report_markdown_raw | tojson | safe }}
+}
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Get report data from hidden JSON element
+  const reportDataEl = document.getElementById('reportData');
+  const reportData = reportDataEl ? JSON.parse(reportDataEl.textContent) : {};
+
+  // Parse markdown content from raw data
+  const reportContent = document.getElementById('reportContent');
+  if (reportContent && typeof marked !== 'undefined' && reportData.report_markdown_raw) {
+    // Configure marked for proper heading parsing
+    marked.setOptions({
+      gfm: true,
+      breaks: true,
+      headerIds: true,
+      mangle: false
+    });
+    
+    // Parse the raw markdown and render as HTML
+    reportContent.innerHTML = marked.parse(reportData.report_markdown_raw);
+  } else if (reportContent) {
+    reportContent.innerHTML = '<p class="error-message">Unable to render report content.</p>';
+  }
+
+  // Copy report
+  document.getElementById('copyReport')?.addEventListener('click', function() {
+    const text = reportData.report_markdown_raw || reportContent?.innerText || '';
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('Report copied to clipboard!');
+    });
+  });
+
+  // Download report
+  document.getElementById('downloadReport')?.addEventListener('click', function() {
+    const text = reportData.report_markdown_raw || '';
+    const blob = new Blob([text], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `credit-report-${reportData.wallet_address}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('Report downloaded!');
+  });
+
+  // Print report
+  document.getElementById('printReport')?.addEventListener('click', function() {
+    window.print();
+  });
+
+  // Toast notification
+  function showToast(message) {
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.innerHTML = `<i class="fas fa-check-circle"></i><span>${message}</span>`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.classList.add('show'), 10);
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
+  }
+
+  // Copy buttons
+  document.querySelectorAll('.copy-btn-small').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const text = this.dataset.copy;
+      navigator.clipboard.writeText(text).then(() => {
+        const icon = this.querySelector('i');
+        icon.className = 'fas fa-check';
+        setTimeout(() => icon.className = 'fas fa-copy', 2000);
+      });
+    });
+  });
+
+  // Apply grade meter percent values set via data attributes to avoid inline percent signs
+  document.querySelectorAll('.grade-meter-fill').forEach(el => {
+    const p = el.dataset.percent;
+    if (p !== undefined && p !== null && p !== '') {
+      el.style.width = p + '%';
+    }
+  });
+
+  document.querySelectorAll('.grade-meter-marker').forEach(el => {
+    const p = el.dataset.percent;
+    if (p !== undefined && p !== null && p !== '') {
+      el.style.left = p + '%';
+    }
+  });
+});
+</script>
+{% endblock %}
