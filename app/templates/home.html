@@ -18,7 +18,7 @@
       </p>
 
       <!-- Search Form -->
-      <form method="post" action="/scores" class="search-form" id="scoreForm">
+      <form method="post" action="/scores" class="search-form" id="scoreForm" onsubmit="return handleFormSubmit(this)">
         <div class="search-input-wrapper">
           <i class="fas fa-search search-icon"></i>
           <input
@@ -53,6 +53,23 @@
           <span>Enter a valid 42-character Ethereum address starting with 0x</span>
         </div>
       </form>
+      <script>
+        // Immediate double-submit prevention
+        var formSubmitted = false;
+        function handleFormSubmit(form) {
+          if (formSubmitted) {
+            console.log('Form already submitted, blocking');
+            return false;
+          }
+          formSubmitted = true;
+          var btn = form.querySelector('#submitBtn');
+          if (btn) {
+            btn.disabled = true;
+            btn.classList.add('loading');
+          }
+          return true;
+        }
+      </script>
     </div>
 
     <!-- Hero Visual -->

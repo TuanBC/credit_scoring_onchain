@@ -104,6 +104,7 @@
     input: null,
     button: null,
     feedback: null,
+    isSubmitting: false,  // Flag to prevent double submission
 
     init() {
       this.form = document.querySelector('.search-form, #scoreForm');
@@ -112,6 +113,7 @@
       this.input = this.form.querySelector('#wallet_address');
       this.button = this.form.querySelector('.search-button, button[type="submit"]');
       this.feedback = this.form.querySelector('.search-feedback, #searchFeedback');
+      this.isSubmitting = false;
 
       this.bindEvents();
     },
@@ -128,9 +130,9 @@
         setTimeout(() => this.handleInput(), 10);
       });
 
-      // Form submission
+      // Form submission - use capture phase to ensure we handle it first
       if (this.form) {
-        this.form.addEventListener('submit', (e) => this.handleSubmit(e));
+        this.form.addEventListener('submit', (e) => this.handleSubmit(e), { capture: true });
       }
     },
 
@@ -162,10 +164,19 @@
     },
 
     handleSubmit(e) {
+      // Prevent double submission
+      if (this.isSubmitting) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Form submission blocked - already submitting');
+        return false;
+      }
+
       const result = AddressValidator.validate(this.input.value);
 
       if (!result.valid) {
         e.preventDefault();
+        e.stopPropagation();
         this.showFeedback({
           valid: false,
           normalized: result.normalized,
@@ -178,8 +189,12 @@
       // Set normalized value
       this.input.value = result.normalized;
 
-      // Show loading state
+      // Mark as submitting and show loading state
+      this.isSubmitting = true;
       this.setLoading(true);
+      
+      // Allow the form to submit normally (don't prevent default)
+      return true;
     },
 
     setLoading(isLoading) {
@@ -193,6 +208,7 @@
         this.button.classList.remove('loading');
         this.button.disabled = false;
         this.input.readOnly = false;
+        this.isSubmitting = false;
       }
     }
   };
@@ -357,12 +373,22 @@
   };
 
   // ========== Initialize ==========
+  let initialized = false;
+  
   function init() {
+    // Prevent double initialization
+    if (initialized) {
+      console.log('App already initialized, skipping');
+      return;
+    }
+    
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', init);
+      document.addEventListener('DOMContentLoaded', init, { once: true });
       return;
     }
 
+    initialized = true;
+    
     ThemeManager.init();
     MobileNav.init();
     FormHandler.init();

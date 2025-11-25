@@ -50,6 +50,7 @@ class ScoreComputation:
     onchain_features: Dict[str, Any]
     offchain_data: Dict[str, Any]
     transaction_count: int
+    time_series_data: Optional[Dict[str, Any]] = None
     card_info: Optional[Dict[str, Any]] = None
     message: Optional[str] = None
 
@@ -62,6 +63,7 @@ class ScoreComputation:
                 "offchain_data": self.offchain_data,
                 "card_info": self.card_info or {},
                 "transaction_count": self.transaction_count,
+                "time_series": self.time_series_data or {},
             },
             "message": self.message,
         }
@@ -115,6 +117,12 @@ class ScoringEngine:
             self.credit_scoring_service.calculate_scorecard_credit_score(features)
         )
 
+        # Extract time-series data for charts
+        time_series_data = self.credit_scoring_service.extract_time_series_data(
+            transactions, normalized_address
+        )
+        time_series_data = _to_native(time_series_data)
+
         offchain_data = self.offchain_generator.generate(normalized_address, features)
 
         result = ScoreComputation(
@@ -123,6 +131,7 @@ class ScoringEngine:
             onchain_features=features,
             offchain_data=offchain_data,
             transaction_count=len(transactions),
+            time_series_data=time_series_data,
         )
         if self.cache:
             self.cache.set(normalized_address, result)

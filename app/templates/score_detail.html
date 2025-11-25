@@ -292,6 +292,137 @@
   </div>
 </section>
 
+<!-- Charts Section -->
+{% if time_series and time_series.monthly %}
+<section class="charts-section">
+  <div class="container">
+    <div class="section-header">
+      <h2 class="section-title">
+        <i class="fas fa-chart-area"></i>
+        Activity Analytics
+      </h2>
+      <p class="section-subtitle">Historical transaction patterns and trends</p>
+    </div>
+
+    <!-- Charts Grid -->
+    <div class="charts-grid">
+      <!-- Monthly Transaction Count Chart -->
+      <div class="chart-card chart-large">
+        <div class="chart-header">
+          <h3 class="chart-title">
+            <i class="fas fa-chart-bar"></i>
+            Monthly Transaction Activity
+          </h3>
+          <div class="chart-legend">
+            <span class="legend-item legend-sent"><span class="legend-dot"></span> Sent</span>
+            <span class="legend-item legend-received"><span class="legend-dot"></span> Received</span>
+          </div>
+        </div>
+        <div class="chart-body">
+          <canvas id="monthlyTxChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Monthly ETH Volume Chart -->
+      <div class="chart-card chart-large">
+        <div class="chart-header">
+          <h3 class="chart-title">
+            <i class="fab fa-ethereum"></i>
+            Monthly ETH Flow
+          </h3>
+          <div class="chart-legend">
+            <span class="legend-item legend-in"><span class="legend-dot"></span> Inflow</span>
+            <span class="legend-item legend-out"><span class="legend-dot"></span> Outflow</span>
+            <span class="legend-item legend-net"><span class="legend-dot"></span> Net</span>
+          </div>
+        </div>
+        <div class="chart-body">
+          <canvas id="monthlyEthChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Cumulative Growth Chart -->
+      <div class="chart-card chart-large">
+        <div class="chart-header">
+          <h3 class="chart-title">
+            <i class="fas fa-chart-line"></i>
+            Cumulative Transaction Growth
+          </h3>
+        </div>
+        <div class="chart-body">
+          <canvas id="cumulativeChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Weekly Activity Chart -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3 class="chart-title">
+            <i class="fas fa-calendar-week"></i>
+            Weekly Activity (Last 12 Weeks)
+          </h3>
+        </div>
+        <div class="chart-body">
+          <canvas id="weeklyChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Weekday Distribution Chart -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3 class="chart-title">
+            <i class="fas fa-calendar-day"></i>
+            Activity by Weekday
+          </h3>
+        </div>
+        <div class="chart-body">
+          <canvas id="weekdayChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Hourly Distribution Chart -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3 class="chart-title">
+            <i class="fas fa-clock"></i>
+            Activity by Hour (UTC)
+          </h3>
+        </div>
+        <div class="chart-body">
+          <canvas id="hourlyChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Transaction Value Distribution -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3 class="chart-title">
+            <i class="fas fa-coins"></i>
+            Transaction Value Distribution
+          </h3>
+        </div>
+        <div class="chart-body">
+          <canvas id="valueDistChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Monthly Counterparties -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3 class="chart-title">
+            <i class="fas fa-users"></i>
+            Monthly Unique Counterparties
+          </h3>
+        </div>
+        <div class="chart-body">
+          <canvas id="counterpartiesChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
+
 <!-- Navigation -->
 <section class="back-nav">
   <div class="container">
@@ -304,7 +435,31 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
+  // Time series data from backend
+  const timeSeriesData = {{ time_series | tojson | safe }};
+  
+  // Chart.js default configuration
+  const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
+  
+  Chart.defaults.color = isDarkMode ? '#a0aec0' : '#64748b';
+  Chart.defaults.borderColor = isDarkMode ? '#2d3748' : '#e2e8f0';
+  Chart.defaults.font.family = "'Inter', sans-serif";
+  
+  // Color palette
+  const colors = {
+    primary: '#3b82f6',
+    secondary: '#8b5cf6',
+    success: '#10b981',
+    danger: '#ef4444',
+    warning: '#f59e0b',
+    info: '#06b6d4',
+    sent: '#ef4444',
+    received: '#10b981',
+    net: '#3b82f6'
+  };
+
   // Animate score ring on load
   document.addEventListener('DOMContentLoaded', function() {
     const scoreRing = document.querySelector('.score-ring');
@@ -323,7 +478,378 @@
         circle.style.strokeDashoffset = offset;
       }, 100);
     }
+
+    // Initialize charts if data exists
+    if (timeSeriesData && timeSeriesData.monthly && timeSeriesData.monthly.length > 0) {
+      initializeCharts();
+    }
   });
+
+  function initializeCharts() {
+    // Monthly Transaction Chart
+    const monthlyTxCtx = document.getElementById('monthlyTxChart');
+    if (monthlyTxCtx && timeSeriesData.monthly) {
+      const last12Months = timeSeriesData.monthly.slice(-12);
+      new Chart(monthlyTxCtx, {
+        type: 'bar',
+        data: {
+          labels: last12Months.map(d => d.month),
+          datasets: [
+            {
+              label: 'Sent',
+              data: last12Months.map(d => d.tx_sent),
+              backgroundColor: colors.sent + '80',
+              borderColor: colors.sent,
+              borderWidth: 1
+            },
+            {
+              label: 'Received',
+              data: last12Months.map(d => d.tx_received),
+              backgroundColor: colors.received + '80',
+              borderColor: colors.received,
+              borderWidth: 1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: {
+              stacked: true,
+              grid: { display: false }
+            },
+            y: {
+              stacked: true,
+              beginAtZero: true,
+              title: { display: true, text: 'Transactions' }
+            }
+          }
+        }
+      });
+    }
+
+    // Monthly ETH Flow Chart
+    const monthlyEthCtx = document.getElementById('monthlyEthChart');
+    if (monthlyEthCtx && timeSeriesData.monthly) {
+      const last12Months = timeSeriesData.monthly.slice(-12);
+      new Chart(monthlyEthCtx, {
+        type: 'line',
+        data: {
+          labels: last12Months.map(d => d.month),
+          datasets: [
+            {
+              label: 'ETH Received',
+              data: last12Months.map(d => d.eth_received),
+              borderColor: colors.received,
+              backgroundColor: colors.received + '20',
+              fill: true,
+              tension: 0.4
+            },
+            {
+              label: 'ETH Sent',
+              data: last12Months.map(d => d.eth_sent),
+              borderColor: colors.sent,
+              backgroundColor: colors.sent + '20',
+              fill: true,
+              tension: 0.4
+            },
+            {
+              label: 'Net ETH',
+              data: last12Months.map(d => d.net_eth),
+              borderColor: colors.net,
+              backgroundColor: 'transparent',
+              borderWidth: 2,
+              borderDash: [5, 5],
+              tension: 0.4,
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: { grid: { display: false } },
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: 'ETH' }
+            }
+          }
+        }
+      });
+    }
+
+    // Cumulative Growth Chart
+    const cumulativeCtx = document.getElementById('cumulativeChart');
+    if (cumulativeCtx && timeSeriesData.cumulative) {
+      new Chart(cumulativeCtx, {
+        type: 'line',
+        data: {
+          labels: timeSeriesData.cumulative.map(d => d.month),
+          datasets: [
+            {
+              label: 'Total Transactions',
+              data: timeSeriesData.cumulative.map(d => d.cumulative_tx),
+              borderColor: colors.primary,
+              backgroundColor: colors.primary + '20',
+              fill: true,
+              tension: 0.4,
+              yAxisID: 'y'
+            },
+            {
+              label: 'Cumulative Net ETH',
+              data: timeSeriesData.cumulative.map(d => d.cumulative_net),
+              borderColor: colors.success,
+              backgroundColor: 'transparent',
+              borderWidth: 2,
+              tension: 0.4,
+              fill: false,
+              yAxisID: 'y1'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          plugins: {
+            legend: { display: true, position: 'top' }
+          },
+          scales: {
+            x: { grid: { display: false } },
+            y: {
+              type: 'linear',
+              display: true,
+              position: 'left',
+              title: { display: true, text: 'Transactions' }
+            },
+            y1: {
+              type: 'linear',
+              display: true,
+              position: 'right',
+              title: { display: true, text: 'Net ETH' },
+              grid: { drawOnChartArea: false }
+            }
+          }
+        }
+      });
+    }
+
+    // Weekly Activity Chart
+    const weeklyCtx = document.getElementById('weeklyChart');
+    if (weeklyCtx && timeSeriesData.weekly) {
+      const last12Weeks = timeSeriesData.weekly.slice(-12);
+      new Chart(weeklyCtx, {
+        type: 'bar',
+        data: {
+          labels: last12Weeks.map(d => d.week),
+          datasets: [{
+            label: 'Transactions',
+            data: last12Weeks.map(d => d.tx_count),
+            backgroundColor: colors.primary + '80',
+            borderColor: colors.primary,
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false } },
+            y: { beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    // Weekday Distribution Chart
+    const weekdayCtx = document.getElementById('weekdayChart');
+    if (weekdayCtx && timeSeriesData.weekday_distribution) {
+      const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const weekdayData = new Array(7).fill(0);
+      timeSeriesData.weekday_distribution.forEach(d => {
+        weekdayData[d.day_num] = d.count;
+      });
+      
+      new Chart(weekdayCtx, {
+        type: 'bar',
+        data: {
+          labels: weekdays,
+          datasets: [{
+            label: 'Transactions',
+            data: weekdayData,
+            backgroundColor: weekdayData.map((_, i) => 
+              i >= 5 ? colors.warning + '80' : colors.info + '80'
+            ),
+            borderColor: weekdayData.map((_, i) => 
+              i >= 5 ? colors.warning : colors.info
+            ),
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false } },
+            y: { beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    // Hourly Distribution Chart
+    const hourlyCtx = document.getElementById('hourlyChart');
+    if (hourlyCtx && timeSeriesData.hourly_distribution) {
+      const hourlyData = new Array(24).fill(0);
+      timeSeriesData.hourly_distribution.forEach(d => {
+        hourlyData[d.hour] = d.count;
+      });
+      
+      new Chart(hourlyCtx, {
+        type: 'line',
+        data: {
+          labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+          datasets: [{
+            label: 'Transactions',
+            data: hourlyData,
+            borderColor: colors.secondary,
+            backgroundColor: colors.secondary + '20',
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false } },
+            y: { beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    // Value Distribution Chart
+    const valueDistCtx = document.getElementById('valueDistChart');
+    if (valueDistCtx && timeSeriesData.value_distribution) {
+      new Chart(valueDistCtx, {
+        type: 'doughnut',
+        data: {
+          labels: timeSeriesData.value_distribution.map(d => d.bucket + ' ETH'),
+          datasets: [{
+            data: timeSeriesData.value_distribution.map(d => d.count),
+            backgroundColor: [
+              colors.success + '80',
+              colors.info + '80',
+              colors.primary + '80',
+              colors.secondary + '80',
+              colors.warning + '80',
+              colors.danger + '80',
+              '#6b7280' + '80'
+            ],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: true,
+              position: 'right',
+              labels: { boxWidth: 12, padding: 8 }
+            }
+          }
+        }
+      });
+    }
+
+    // Monthly Counterparties Chart
+    const counterpartiesCtx = document.getElementById('counterpartiesChart');
+    if (counterpartiesCtx && timeSeriesData.monthly) {
+      const last12Months = timeSeriesData.monthly.slice(-12);
+      new Chart(counterpartiesCtx, {
+        type: 'line',
+        data: {
+          labels: last12Months.map(d => d.month),
+          datasets: [{
+            label: 'Unique Counterparties',
+            data: last12Months.map(d => d.unique_counterparties),
+            borderColor: colors.info,
+            backgroundColor: colors.info + '20',
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false } },
+            y: { beginAtZero: true }
+          }
+        }
+      });
+    }
+  }
+
+  // Theme change handling - update chart colors without page reload
+  // Store initial theme to detect actual user-triggered changes
+  let initialTheme = document.documentElement.getAttribute('data-theme');
+  let themeInitialized = false;
+  
+  // Only listen for theme changes after initial page load is complete
+  setTimeout(() => {
+    themeInitialized = true;
+  }, 1000);
+  
+  const observer = new MutationObserver((mutations) => {
+    if (!themeInitialized) return; // Skip during initial page load
+    
+    mutations.forEach((mutation) => {
+      if (mutation.attributeName === 'data-theme') {
+        const newTheme = document.documentElement.getAttribute('data-theme');
+        // Only act if theme actually changed (user clicked toggle)
+        if (newTheme !== initialTheme) {
+          initialTheme = newTheme;
+          // Update chart colors dynamically instead of reloading
+          updateChartTheme(newTheme === 'dark');
+        }
+      }
+    });
+  });
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  
+  // Update chart colors without page reload
+  function updateChartTheme(isDark) {
+    const textColor = isDark ? '#a0aec0' : '#64748b';
+    const borderColor = isDark ? '#2d3748' : '#e2e8f0';
+    
+    Chart.defaults.color = textColor;
+    Chart.defaults.borderColor = borderColor;
+    
+    // Update all existing charts
+    Object.values(Chart.instances).forEach(chart => {
+      chart.options.scales.x.ticks.color = textColor;
+      chart.options.scales.y.ticks.color = textColor;
+      chart.update('none');
+    });
+  }
 </script>
 {% endblock %}
 

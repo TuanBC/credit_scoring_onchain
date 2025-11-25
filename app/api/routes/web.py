@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Dict
 
-from fastapi import APIRouter, Depends, Form, Path, Request, status
+from fastapi import APIRouter, Depends, Form, Path, Request, Response, status
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
@@ -24,6 +24,13 @@ from app.services.scoring_engine import ScoringEngine
 settings = get_settings()
 templates = Jinja2Templates(directory=str(settings.template_dir))
 router = APIRouter(include_in_schema=False)
+
+
+# Handle Chrome DevTools configuration request silently
+@router.get("/.well-known/appspecific/com.chrome.devtools.json")
+async def chrome_devtools_config() -> Response:
+    """Return empty response for Chrome DevTools config request."""
+    return Response(status_code=204)
 
 
 # Credit grade table for risk categorization
@@ -87,6 +94,9 @@ async def submit_score_request(
     rate_limiter: RateLimiter = Depends(get_rate_limiter),
 ) -> HTMLResponse:
     """Handle the address submission from the landing page."""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     try:
         # Normalize address (ensure lowercase and proper format)
         wallet_address = wallet_address.strip().lower()
@@ -109,7 +119,10 @@ async def submit_score_request(
             )
 
         client_ip = request.client.host if request.client else "anonymous"
+        logger.info(f"Score request from {client_ip} for wallet {wallet_address[:10]}...")
+        
         if not rate_limiter.allow(client_ip):
+            logger.warning(f"Rate limit exceeded for {client_ip}")
             return templates.TemplateResponse(
                 "home.html",
                 _template_context(
@@ -131,6 +144,7 @@ async def submit_score_request(
             "score": result.credit_score,
             "features": result.onchain_features,
             "offchain": result.offchain_data,
+            "time_series": result.time_series_data or {},
             "message": result.message,
             "report_enabled": report_generation_enabled(),
         }

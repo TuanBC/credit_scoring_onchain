@@ -241,6 +241,184 @@ class CreditScoringService:
         
         return features
     
+    def extract_time_series_data(
+        self,
+        transactions: List[Dict[str, Any]],
+        wallet_address: str
+    ) -> Dict[str, Any]:
+        """
+        Extract time-series data for visualization charts.
+        
+        Args:
+            transactions: List of transaction dictionaries from Etherscan
+            wallet_address: Wallet address (lowercase)
+        
+        Returns:
+            Dictionary containing monthly and weekly aggregated data
+        """
+        df = pd.DataFrame(transactions)
+        
+        if df.empty:
+            return {
+                "monthly": [],
+                "weekly": [],
+                "daily_activity": [],
+                "hourly_distribution": [],
+                "weekday_distribution": []
+            }
+        
+        # Convert data types
+        df['timeStamp'] = pd.to_numeric(df['timeStamp'], errors='coerce')
+        df['timeStamp'] = pd.to_datetime(df['timeStamp'], unit='s')
+        df['value'] = pd.to_numeric(df['value'], errors='coerce')
+        df['from'] = df['from'].astype(str).str.lower()
+        df['to'] = df['to'].astype(str).str.lower()
+        
+        if 'isError' not in df.columns:
+            df['isError'] = 0
+        else:
+            df['isError'] = pd.to_numeric(df['isError'], errors='coerce')
+        
+        def wei_to_eth(x):
+            return float(x / 1e18) if x is not None else 0.0
+        
+        time_series = {}
+        
+        # Monthly aggregations (last 24 months)
+        df['month'] = df['timeStamp'].dt.to_period('M')
+        monthly_data = []
+        
+        # Get unique months sorted
+        unique_months = sorted(df['month'].unique())
+        
+        for month in unique_months:
+            month_df = df[df['month'] == month]
+            month_str = str(month)
+            
+            sent_df = month_df[month_df['from'] == wallet_address]
+            recv_df = month_df[month_df['to'] == wallet_address]
+            
+            monthly_data.append({
+                "month": month_str,
+                "tx_count": int(len(month_df)),
+                "tx_sent": int(len(sent_df)),
+                "tx_received": int(len(recv_df)),
+                "eth_sent": wei_to_eth(sent_df['value'].sum()),
+                "eth_received": wei_to_eth(recv_df['value'].sum()),
+                "net_eth": wei_to_eth(recv_df['value'].sum()) - wei_to_eth(sent_df['value'].sum()),
+                "unique_counterparties": int(len(
+                    set(sent_df['to'].dropna().unique()) | 
+                    set(recv_df['from'].dropna().unique())
+                )),
+                "avg_tx_value": wei_to_eth(month_df['value'].mean()) if not month_df.empty else 0,
+                "failed_tx": int((month_df['isError'] == 1).sum())
+            })
+        
+        time_series['monthly'] = monthly_data[-24:]  # Last 24 months
+        
+        # Weekly aggregations (last 52 weeks)
+        df['week'] = df['timeStamp'].dt.to_period('W')
+        weekly_data = []
+        
+        unique_weeks = sorted(df['week'].unique())
+        
+        for week in unique_weeks:
+            week_df = df[df['week'] == week]
+            week_str = str(week)
+            
+            sent_df = week_df[week_df['from'] == wallet_address]
+            recv_df = week_df[week_df['to'] == wallet_address]
+            
+            weekly_data.append({
+                "week": week_str,
+                "tx_count": int(len(week_df)),
+                "eth_volume": wei_to_eth(week_df['value'].sum()),
+                "unique_counterparties": int(len(
+                    set(sent_df['to'].dropna().unique()) | 
+                    set(recv_df['from'].dropna().unique())
+                ))
+            })
+        
+        time_series['weekly'] = weekly_data[-52:]  # Last 52 weeks
+        
+        # Daily activity heatmap data (last 365 days)
+        now = pd.Timestamp.now()
+        one_year_ago = now - pd.DateOffset(days=365)
+        recent_df = df[df['timeStamp'] >= one_year_ago].copy()
+        
+        if not recent_df.empty:
+            recent_df['date'] = recent_df['timeStamp'].dt.date
+            daily_counts = recent_df.groupby('date').size().to_dict()
+            
+            daily_activity = [
+                {"date": str(date), "count": int(count)}
+                for date, count in sorted(daily_counts.items())
+            ]
+        else:
+            daily_activity = []
+        
+        time_series['daily_activity'] = daily_activity
+        
+        # Hourly distribution (all-time)
+        hourly_dist = df['timeStamp'].dt.hour.value_counts().sort_index()
+        time_series['hourly_distribution'] = [
+            {"hour": int(hour), "count": int(count)}
+            for hour, count in hourly_dist.items()
+        ]
+        
+        # Weekday distribution (all-time)
+        weekday_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        weekday_dist = df['timeStamp'].dt.dayofweek.value_counts().sort_index()
+        time_series['weekday_distribution'] = [
+            {"day": weekday_names[day], "day_num": int(day), "count": int(count)}
+            for day, count in weekday_dist.items()
+        ]
+        
+        # Transaction value distribution (buckets)
+        eth_values = df['value'] / 1e18
+        buckets = [0, 0.001, 0.01, 0.1, 1, 10, 100, float('inf')]
+        bucket_labels = ['<0.001', '0.001-0.01', '0.01-0.1', '0.1-1', '1-10', '10-100', '>100']
+        
+        value_distribution = []
+        for i in range(len(buckets) - 1):
+            count = int(((eth_values >= buckets[i]) & (eth_values < buckets[i+1])).sum())
+            value_distribution.append({
+                "bucket": bucket_labels[i],
+                "count": count
+            })
+        
+        time_series['value_distribution'] = value_distribution
+        
+        # Cumulative metrics over time
+        df_sorted = df.sort_values('timeStamp')
+        cumulative_data = []
+        
+        running_tx = 0
+        running_eth_in = 0
+        running_eth_out = 0
+        
+        for month in unique_months:
+            month_df = df_sorted[df_sorted['month'] == month]
+            running_tx += len(month_df)
+            
+            sent_df = month_df[month_df['from'] == wallet_address]
+            recv_df = month_df[month_df['to'] == wallet_address]
+            
+            running_eth_in += wei_to_eth(recv_df['value'].sum())
+            running_eth_out += wei_to_eth(sent_df['value'].sum())
+            
+            cumulative_data.append({
+                "month": str(month),
+                "cumulative_tx": running_tx,
+                "cumulative_eth_in": running_eth_in,
+                "cumulative_eth_out": running_eth_out,
+                "cumulative_net": running_eth_in - running_eth_out
+            })
+        
+        time_series['cumulative'] = cumulative_data
+        
+        return time_series
+    
     def calculate_credit_score(
         self, 
         features: Dict[str, Any], 
