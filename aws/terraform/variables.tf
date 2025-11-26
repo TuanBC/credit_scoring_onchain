@@ -21,7 +21,6 @@ variable "bedrock_bearer_token" {
   description = "AWS Bedrock Bearer Token for LLM access"
   type        = string
   sensitive   = true
-  default     = ""
 }
 
 variable "bedrock_model_id" {
