@@ -8,12 +8,3 @@ repos:
         args: [ --fix ]
       # Run the formatter.
       - id: ruff-format
-
-  - repo: local
-    hooks:
-      - id: ensure-utf8
-        name: Ensure UTF-8
-        entry: python scripts/ensure_utf8.py
-        language: python
-        types: [text]
-        additional_dependencies: [charset-normalizer]

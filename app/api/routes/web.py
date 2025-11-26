@@ -35,12 +35,48 @@ async def chrome_devtools_config() -> Response:
 
 # Credit grade table for risk categorization
 GRADE_TABLE = [
-    {"grade": 1, "min_score": 700, "max_score": 1000, "risk_category": "Ultra Low Risk (A++)", "expected_bad_rate": 0.0},
-    {"grade": 2, "min_score": 653, "max_score": 699, "risk_category": "Very Low Risk (A+)", "expected_bad_rate": 1.7},
-    {"grade": 3, "min_score": 600, "max_score": 652, "risk_category": "Low Risk (A)", "expected_bad_rate": 2.7},
-    {"grade": 4, "min_score": 570, "max_score": 599, "risk_category": "Moderate Risk (B)", "expected_bad_rate": 4.6},
-    {"grade": 5, "min_score": 528, "max_score": 569, "risk_category": "High Risk (C)", "expected_bad_rate": 17.3},
-    {"grade": 6, "min_score": 0, "max_score": 527, "risk_category": "Very High Risk (C-)", "expected_bad_rate": 40.4},
+    {
+        "grade": 1,
+        "min_score": 700,
+        "max_score": 1000,
+        "risk_category": "Ultra Low Risk (A++)",
+        "expected_bad_rate": 0.0,
+    },
+    {
+        "grade": 2,
+        "min_score": 653,
+        "max_score": 699,
+        "risk_category": "Very Low Risk (A+)",
+        "expected_bad_rate": 1.7,
+    },
+    {
+        "grade": 3,
+        "min_score": 600,
+        "max_score": 652,
+        "risk_category": "Low Risk (A)",
+        "expected_bad_rate": 2.7,
+    },
+    {
+        "grade": 4,
+        "min_score": 570,
+        "max_score": 599,
+        "risk_category": "Moderate Risk (B)",
+        "expected_bad_rate": 4.6,
+    },
+    {
+        "grade": 5,
+        "min_score": 528,
+        "max_score": 569,
+        "risk_category": "High Risk (C)",
+        "expected_bad_rate": 17.3,
+    },
+    {
+        "grade": 6,
+        "min_score": 0,
+        "max_score": 527,
+        "risk_category": "Very High Risk (C-)",
+        "expected_bad_rate": 40.4,
+    },
 ]
 
 
@@ -95,8 +131,9 @@ async def submit_score_request(
 ) -> HTMLResponse:
     """Handle the address submission from the landing page."""
     import logging
+
     logger = logging.getLogger(__name__)
-    
+
     try:
         # Normalize address (ensure lowercase and proper format)
         wallet_address = wallet_address.strip().lower()
@@ -119,8 +156,10 @@ async def submit_score_request(
             )
 
         client_ip = request.client.host if request.client else "anonymous"
-        logger.info(f"Score request from {client_ip} for wallet {wallet_address[:10]}...")
-        
+        logger.info(
+            f"Score request from {client_ip} for wallet {wallet_address[:10]}..."
+        )
+
         if not rate_limiter.allow(client_ip):
             logger.warning(f"Rate limit exceeded for {client_ip}")
             return templates.TemplateResponse(
@@ -200,7 +239,7 @@ async def get_wallet_report_html(
 
         # Get wallet score and features
         result = await scoring_engine.evaluate_wallet(wallet_address)
-        
+
         if not result.onchain_features:
             return templates.TemplateResponse(
                 "home.html",
@@ -217,10 +256,10 @@ async def get_wallet_report_html(
 
         # Generate the markdown report
         report_markdown = await report_service.generate_markdown_report(result)
-        
+
         # Get grade info
         grade_info = get_grade_info(result.credit_score)
-        
+
         # Combine all features
         all_features = {
             **result.onchain_features,
@@ -250,6 +289,7 @@ async def get_wallet_report_html(
         )
     except Exception as e:
         import logging
+
         logger = logging.getLogger(__name__)
         logger.error(f"Error generating report: {e}", exc_info=True)
 

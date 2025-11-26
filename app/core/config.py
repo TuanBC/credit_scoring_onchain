@@ -31,9 +31,7 @@ class Settings(BaseModel):
     )
     llm_provider: str = Field(default=os.getenv("LLM_PROVIDER", "bedrock"))
     bedrock_model_id: str = Field(
-        default=os.getenv(
-            "BEDROCK_MODEL_ID", "amazon.nova-pro-v1:0"
-        )
+        default=os.getenv("BEDROCK_MODEL_ID", "amazon.nova-pro-v1:0")
     )
     bedrock_region: str = Field(default=os.getenv("BEDROCK_REGION", "ap-southeast-2"))
     aws_bearer_token: Optional[str] = Field(
